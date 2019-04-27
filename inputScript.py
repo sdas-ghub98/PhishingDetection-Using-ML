@@ -8,18 +8,26 @@ from BeautifulSoup import BeautifulSoup
 import urllib
 import whois
 import datetime
+import urllib2
+import re
 
+# Extracts domain from the given URL
+    domain = re.findall(r"://([^/]+)/?", url)[0]
+# Requests all the information about the domain
+    whois_response = requests.get("https://www.whois.com/whois/"+domain)
+
+    rank_checker_response = requests.post("https://www.checkpagerank.net/index.php", {
+        "name": domain
+    })
 
 def url_having_ip(url):
-#using regular function
-#    symbol = regex.findall(r'(http((s)?)://)((((\d)+).)*)((\w)+)(/((\w)+))?',url)
- #   if(len(symbol)!=0):
-  #      having_ip = 1 #phishing
-   # else:
-    #    having_ip = -1 #legitimate
-    #return(having_ip)
-    return 0
-
+    ip = re.compile('(([2][5][0-5]\.)|([2][0-4][0-9]\.)|([0-1]?[0-9]?[0-9]\.)){3}'+'(([2][5][0-5])|([2][0-4][0-9])|([0-1]?[0-9]?[0-9]))')
+    match = ip.search(url)
+    if match:
+        return 1
+    else:
+        return -1
+    
 
 def url_length(url):
     length=len(url)
@@ -33,7 +41,13 @@ def url_length(url):
 
 def url_short(url):
     #ongoing
-    return 0
+    response = urllib2.urlopen(url)
+    final_url = response.geturl() 
+    response_code = response.getcode()
+    if response_code == 302:
+        return -1
+    else:
+        return 1
 
 def having_at_symbol(url):
     symbol=re.findall(r'@',url)
@@ -44,12 +58,11 @@ def having_at_symbol(url):
     
 def doubleSlash(url):
     #ongoing
-    symbol=re.findall(r'//',url)
-    if(len(symbol)==0):
-        return -1
-    else:
+    if(url.count("//") > 1):
         return 1
-    return 0
+    else:
+        return -1
+
 
 def prefix_suffix(url):
     subDomain, domain, suffix = tldextract.extract(url)
@@ -299,9 +312,77 @@ def web_traffic(url):
     #ongoing
     return 0
 
+
+
 def page_rank(url):
-    #ongoing
-    return 0
+    hsh = check_hash(hash_url(url))
+    gurl = 'http://www.google.com/search?client=navclient-auto&features=Rank:&q=info:%s&ch=%s' % (urllib.quote(url), hsh)
+    try:
+        f = urllib.urlopen(gurl)
+        rank = f.read().strip()[9:]
+    except Exception:
+        rank = 'N/A'
+    if rank == '':
+        rank = '0'
+    
+    if(rank < 0.2):
+        return 1
+    else:
+        return -1
+ 
+ 
+def  int_str(string, integer, factor):
+    for i in range(len(string)) :
+        integer *= factor
+        integer &= 0xFFFFFFFF
+        integer += ord(string[i])
+    return integer
+ 
+ 
+def hash_url(string):
+    c1 = int_str(string, 0x1505, 0x21)
+    c2 = int_str(string, 0, 0x1003F)
+ 
+    c1 >>= 2
+    c1 = ((c1 >> 4) & 0x3FFFFC0) | (c1 & 0x3F)
+    c1 = ((c1 >> 4) & 0x3FFC00) | (c1 & 0x3FF)
+    c1 = ((c1 >> 4) & 0x3C000) | (c1 & 0x3FFF)
+ 
+    t1 = (c1 & 0x3C0) < < 4
+    t1 |= c1 & 0x3C
+    t1 = (t1 << 2) | (c2 & 0xF0F)
+ 
+    t2 = (c1 & 0xFFFFC000) << 4
+    t2 |= c1 & 0x3C00
+    t2 = (t2 << 0xA) | (c2 & 0xF0F0000)
+ 
+    return (t1 | t2)
+ 
+ 
+def check_hash(hash_int):
+    hash_str = '%u' % (hash_int)
+    flag = 0
+    check_byte = 0
+ 
+    i = len(hash_str) - 1
+    while i >= 0:
+        byte = int(hash_str[i])
+        if 1 == (flag % 2):
+            byte *= 2
+            byte = byte / 10 + byte % 10
+        check_byte += byte
+        flag += 1
+        i -= 1
+ 
+    check_byte %= 10
+    if 0 != check_byte:
+        check_byte = 10 - check_byte
+        if 1 == flag % 2:
+            if 1 == check_byte % 2:
+                check_byte += 9
+            check_byte >>= 1
+ 
+    return '7' + str(check_byte) + hash_str
 
 def google_index(url):
     #ongoing
