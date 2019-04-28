@@ -121,7 +121,7 @@ def SSLfinal_State(url):
     except Exception as e:
         
         return 1
-
+  
 def domain_registration(url):
     try:
         w = whois.query(url)
