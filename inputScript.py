@@ -309,10 +309,13 @@ def dns(url):
     return 0
 
 def web_traffic(url):
-    #ongoing
-    return 0
-
-
+    try:
+        if global_rank > 0 and global_rank < 100000:
+            return -1
+        else:
+            return 0
+    except:
+        return 1
 
 def page_rank(url):
     hsh = check_hash(hash_url(url))
